@@ -14,10 +14,6 @@ body {
     background-color: #f8f9fa;
 }
 
-<<<<<<< HEAD
-/* Header bar */
-=======
->>>>>>> a827ede (WIP: local changes before rebase)
 .header-bar {
     background-color: #0a2c4d;
     padding: 2.5rem 2rem 2rem 2rem;
@@ -27,29 +23,19 @@ body {
 }
 
 .header-title {
-<<<<<<< HEAD
-    font-size: 2.5rem;
-=======
     font-size: 2.7rem;
->>>>>>> a827ede (WIP: local changes before rebase)
     font-weight: 700;
     color: white;
     margin-bottom: 0.5rem;
 }
 
 .header-subtitle {
-<<<<<<< HEAD
-    font-size: 2rem;
-=======
     font-size: 1.35rem;
->>>>>>> a827ede (WIP: local changes before rebase)
     font-weight: 400;
     color: #e0e6ed;
     margin-bottom: 0.5rem;
 }
 
-<<<<<<< HEAD
-=======
 .progress-cue {
     font-size: 1.15rem;
     color: #0a2c4d;
@@ -57,7 +43,6 @@ body {
     font-weight: 500;
 }
 
->>>>>>> a827ede (WIP: local changes before rebase)
 .section-title {
     color: #0a2c4d;
     font-size: 2rem;
@@ -66,8 +51,6 @@ body {
     margin-bottom: 1rem;
 }
 
-<<<<<<< HEAD
-=======
 .section-desc {
     color: #333;
     font-size: 1.1rem;
@@ -75,7 +58,6 @@ body {
     margin-top: -0.5rem;
 }
 
->>>>>>> a827ede (WIP: local changes before rebase)
 .profile-section {
     background: white;
     border-radius: 16px;
@@ -99,8 +81,6 @@ body {
     z-index: 100;
 }
 
-<<<<<<< HEAD
-=======
 .bold-action {
     font-weight: 700;
     color: #0a2c4d;
@@ -115,7 +95,6 @@ body {
     font-size: 1.05rem !important;
 }
 
->>>>>>> a827ede (WIP: local changes before rebase)
 /* Hide Streamlit default header and footer */
 #MainMenu {visibility: hidden;}
 footer {visibility: hidden;}
@@ -127,17 +106,12 @@ header {visibility: hidden;}
 load_dotenv()
 
 # Initialize session state
-<<<<<<< HEAD
-if 'processed_docs' not in st.session_state:
-    st.session_state.processed_docs = []
-=======
 if 'subject_docs' not in st.session_state:
     st.session_state.subject_docs = []
 if 'context_docs' not in st.session_state:
     st.session_state.context_docs = []
 if 'team_docs' not in st.session_state:
     st.session_state.team_docs = []
->>>>>>> a827ede (WIP: local changes before rebase)
 if 'profile' not in st.session_state:
     st.session_state.profile = None
 if 'user_question' not in st.session_state:
@@ -146,13 +120,10 @@ if 'question_answer' not in st.session_state:
     st.session_state.question_answer = None
 if 'reference_docs' not in st.session_state:
     st.session_state.reference_docs = []
-<<<<<<< HEAD
-=======
 if 'intent' not in st.session_state:
     st.session_state.intent = "Coach for promotion"
 if 'intent_other' not in st.session_state:
     st.session_state.intent_other = ''
->>>>>>> a827ede (WIP: local changes before rebase)
 
 # Initialize components
 document_processor = DocumentProcessor()
@@ -193,55 +164,6 @@ def create_pdf(profile_text, question_answer=None):
 
 def main():
     st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
-<<<<<<< HEAD
-    # Custom header bar
-    st.markdown(
-        '<div class="header-bar">'
-        '<div class="header-title">Comprehensive Integrated Leadership Profile</div>'
-        '<div class="header-subtitle">Upload leadership documents to generate a customized profile</div>'
-        '</div>',
-        unsafe_allow_html=True
-    )
-    
-    # File upload section
-    with st.container():
-        st.markdown('<div style="font-size:1.8rem; font-weight:400; margin-bottom:0.5rem;">Upload leadership documents (Hogan Report, CV, 360, Big Five, etc.)(in PDF)</div>', unsafe_allow_html=True)
-        uploaded_files = st.file_uploader(
-            " ",  # Hide the default label
-            type=['pdf', 'docx'],
-            accept_multiple_files=True,
-            key="file_uploader"
-        )
-
-    # User question input
-    st.markdown('<div style="font-size:1.8rem; font-weight:400; margin-top:1.5rem; margin-bottom:0.5rem;">Do you have any special questions about this leader? For example, fitness for a role, or team? Or how best to coach them for a specific next job? (Optional)</div>', unsafe_allow_html=True)
-    user_question = st.text_input(
-        " ",  # Hide the default label
-        value=st.session_state.user_question
-    )
-
-    # Submit button
-    if st.button("Submit"):
-        st.session_state.processed_docs = []
-        st.session_state.user_question = user_question
-        st.session_state.question_answer = None
-        st.session_state.profile = None
-        # Always include reference docs
-        all_docs = list(st.session_state.reference_docs)
-        if uploaded_files:
-            with st.spinner("Processing documents..."):
-                for file in uploaded_files:
-                    # Save uploaded file temporarily
-                    with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.name)[1]) as tmp_file:
-                        tmp_file.write(file.getvalue())
-                        processed_text = document_processor.process_document(tmp_file.name)
-                        st.session_state.processed_docs.append(processed_text)
-                        os.unlink(tmp_file.name)
-                all_docs.extend(st.session_state.processed_docs)
-        else:
-            with st.spinner("Loading reference documents..."):
-                pass  # Just use reference docs
-=======
     st.markdown(
         '<div class="header-bar">'
         '<div class="header-title">Leadership Profile</div>'
@@ -269,7 +191,7 @@ def main():
     st.markdown("<div style='height: 18px;'></div>", unsafe_allow_html=True)  # Extra spacing
 
     # Leadership Subject Documents
-    st.markdown('<div class="section-title"> Documents about the Individual <span style="font-size:1.2rem; font-weight:400;"> </span></div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title"> Documents about the Individual <span style="font-size:1.2rem; font-weight:400;">(Who are we profiling?)</span></div>', unsafe_allow_html=True)
     st.markdown('<div class="section-desc">Help us get to know this leader. The more you share, the more useful the profile will be. <span class="bold-action">Upload</span> assessments, CVs, 360s, and other insights that reveal how they think, act, and lead.</div>', unsafe_allow_html=True)
     subject_docs = st.file_uploader(
         "Upload PDF or DOCX", type=['pdf', 'docx'], accept_multiple_files=True, key="subject"
@@ -279,7 +201,7 @@ def main():
 
     # Context Documents
     st.markdown('<div class="section-title">Context Documents <span style="font-size:1.2rem; font-weight:400;">(What\'s the leadership context?)</span></div>', unsafe_allow_html=True)
-    st.markdown('<div class="section-desc">What would he helpful for us to know? <span class="bold-action">Upload</span> role descriptions, leadership models, or team member profiles to help us align the profile to future needs.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-desc">What would he helpful for us to know? <span class="bold-action">Upload</span> role descriptions, leadership models, or strategic plans to help us align the profile to future needs.</div>', unsafe_allow_html=True)
     context_docs = st.file_uploader(
         "Upload PDF or DOCX", type=['pdf', 'docx'], accept_multiple_files=True, key="context"
     )
@@ -322,7 +244,6 @@ def main():
                         st.session_state.context_docs.append(processed_text)
                         os.unlink(tmp_file.name)
                 all_docs.extend(st.session_state.context_docs)
->>>>>>> a827ede (WIP: local changes before rebase)
         # Store all documents in vector database
         vector_store.store_documents(all_docs)
         # Generate profile
