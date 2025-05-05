@@ -7,10 +7,6 @@ openai==1.12.0
 python-dotenv==1.0.1
 pandas==2.2.1
 numpy==1.26.4
-<<<<<<< HEAD
-tiktoken==0.6.0 
-pinecone-client
-=======
 tiktoken==0.6.0
 pycryptodome 
->>>>>>> a827ede (WIP: local changes before rebase)
+
