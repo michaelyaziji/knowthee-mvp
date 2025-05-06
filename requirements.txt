@@ -9,4 +9,4 @@ pandas==2.2.1
 numpy==1.26.4
 tiktoken==0.6.0 
 pinecone-client
-fpdf==2.7.8
+fpdf
