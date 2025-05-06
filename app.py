@@ -6,6 +6,8 @@ from document_processor import DocumentProcessor
 from profile_generator import ProfileGenerator
 from vector_store import VectorStore
 from fpdf import FPDF
+import re
+from pathlib import Path
 
 # Custom CSS for branding and layout
 CUSTOM_CSS = """
@@ -95,7 +97,6 @@ body {
     font-size: 1.05rem !important;
 }
 
-/* Hide Streamlit default header and footer */
 #MainMenu {visibility: hidden;}
 footer {visibility: hidden;}
 header {visibility: hidden;}
@@ -106,24 +107,19 @@ header {visibility: hidden;}
 load_dotenv()
 
 # Initialize session state
-if 'subject_docs' not in st.session_state:
-    st.session_state.subject_docs = []
-if 'context_docs' not in st.session_state:
-    st.session_state.context_docs = []
-if 'team_docs' not in st.session_state:
-    st.session_state.team_docs = []
-if 'profile' not in st.session_state:
-    st.session_state.profile = None
-if 'user_question' not in st.session_state:
-    st.session_state.user_question = ''
-if 'question_answer' not in st.session_state:
-    st.session_state.question_answer = None
-if 'reference_docs' not in st.session_state:
-    st.session_state.reference_docs = []
-if 'intent' not in st.session_state:
-    st.session_state.intent = "Coach for promotion"
-if 'intent_other' not in st.session_state:
-    st.session_state.intent_other = ''
+for key, default in {
+    'subject_docs': [],
+    'context_docs': [],
+    'team_docs': [],
+    'profile': None,
+    'user_question': '',
+    'question_answer': None,
+    'reference_docs': [],
+    'intent': "Get an overall assessment",
+    'intent_other': ''
+}.items():
+    if key not in st.session_state:
+        st.session_state[key] = default
 
 # Initialize components
 document_processor = DocumentProcessor()
@@ -138,7 +134,7 @@ def load_reference_docs():
         if filename.lower().endswith('.pdf'):
             file_path = os.path.join(reference_folder, filename)
             try:
-                text = document_processor.process_document(file_path)
+                text, metadata = document_processor.process_document(file_path)
                 reference_texts.append(text)
             except Exception as e:
                 print(f"Error processing {file_path}: {e}")
@@ -150,17 +146,61 @@ if not st.session_state.reference_docs:
 
 def create_pdf(profile_text, question_answer=None):
     pdf = FPDF()
-    pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)
-    pdf.set_font("Arial", size=12)
-    pdf.multi_cell(0, 10, profile_text)
+    pdf.add_page()
+
+    # Robust font path resolution
+    BASE_DIR = Path(__file__).resolve().parent
+    FONT_PATH = BASE_DIR / "fonts" / "DejaVuSans.ttf"
+
+    pdf.add_font("DejaVu", "", str(FONT_PATH), uni=True)
+    pdf.set_font("DejaVu", size=12)
+
+    lines = profile_text.split('\n')
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue  # Skip empty lines
+        # Break up very long words (over 80 chars)
+        if max((len(word) for word in line.split()), default=0) > 80:
+            words = [word if len(word) <= 80 else ' '.join([word[i:i+80] for i in range(0, len(word), 80)]) for word in line.split()]
+            line = ' '.join(words)
+        try:
+            if line.startswith("###"):
+                heading = line.replace("###", "").strip()
+                pdf.set_font("DejaVu", "B", 14)
+                pdf.cell(0, 10, heading, ln=True)
+                pdf.set_font("DejaVu", size=12)
+            elif re.match(r"^\s*\d+\.", line) or line.startswith("-"):
+                pdf.cell(10)
+                pdf.multi_cell(0, 8, line)
+            elif "**" in line:
+                parts = re.split(r'(\*\*.*?\*\*)', line)
+                for part in parts:
+                    if part.startswith("**") and part.endswith("**"):
+                        pdf.set_font("DejaVu", "B", 12)
+                        pdf.write(8, part[2:-2])
+                        pdf.set_font("DejaVu", size=12)
+                    else:
+                        pdf.write(8, part)
+                pdf.ln(10)
+            else:
+                pdf.multi_cell(0, 8, line)
+        except Exception as e:
+            print(f"Skipped line in PDF due to error: {e}\nLine content: {repr(line)}")
+            continue
+
     if question_answer:
         pdf.ln(10)
-        pdf.set_font("Arial", "B", 12)
+        pdf.set_font("DejaVu", "B", 12)
         pdf.cell(0, 10, "Special Question Answer:", ln=True)
-        pdf.set_font("Arial", size=12)
-        pdf.multi_cell(0, 10, question_answer)
-    return pdf.output(dest='S').encode('latin1')
+        pdf.set_font("DejaVu", size=12)
+        try:
+            pdf.multi_cell(0, 10, question_answer)
+        except Exception as e:
+            print(f"Skipped question_answer in PDF due to error: {e}")
+
+    return pdf.output(dest='S')
 
 def main():
     st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
@@ -173,9 +213,8 @@ def main():
     )
     st.markdown("<div class=\"progress-cue\">We'll generate a <span class=\"key-idea\">custom leadership profile</span> and tailored guidance based on what you share. By default we will generate: <br> 1. An integrated leadership profile <br> 2. Key Strengths <br> 3. Potential Derailers <br> 4. Overall Leadership Style <br> 5. A chart indicating what types of jobs would be most and least suitable for this person, and why</div>", unsafe_allow_html=True)
 
-    # What do you need? (Intent) Dropdown
     intent_options = [
-        "Get an oveall assessment",
+        "Get an overall assessment",
         "Coach for promotion",
         "Evaluate role fit",
         "Build onboarding plan",
@@ -184,31 +223,23 @@ def main():
     ]
     st.markdown('<div style="margin-bottom: 1.2rem;"><span class="bold-action">What outcome are you seeking?</span></div>', unsafe_allow_html=True)
     intent = st.selectbox(" ", intent_options, key="intent")
-    intent_other = ""
     if intent == "Other (please specify)":
-        intent_other = st.text_input("Please specify your outcome or use case:", key="intent_other")
+        st.text_input("Please specify your outcome or use case:", key="intent_other")
 
-    st.markdown("<div style='height: 18px;'></div>", unsafe_allow_html=True)  # Extra spacing
+    st.markdown("<div style='height: 18px;'></div>", unsafe_allow_html=True)
 
-    # Leadership Subject Documents
     st.markdown('<div class="section-title"> Documents about the Individual <span style="font-size:1.2rem; font-weight:400;">(Who are we profiling?)</span></div>', unsafe_allow_html=True)
     st.markdown('<div class="section-desc">Help us get to know this leader. The more you share, the more useful the profile will be. <span class="bold-action">Upload</span> assessments, CVs, 360s, and other insights that reveal how they think, act, and lead.</div>', unsafe_allow_html=True)
-    subject_docs = st.file_uploader(
-        "Upload PDF or DOCX", type=['pdf', 'docx'], accept_multiple_files=True, key="subject"
-    )
+    subject_docs = st.file_uploader("Upload PDF or DOCX", type=['pdf', 'docx'], accept_multiple_files=True, key="subject")
 
     st.markdown("<div style='height: 18px;'></div>", unsafe_allow_html=True)
 
-    # Context Documents
     st.markdown('<div class="section-title">Context Documents <span style="font-size:1.2rem; font-weight:400;">(What\'s the leadership context?)</span></div>', unsafe_allow_html=True)
-    st.markdown('<div class="section-desc">What would he helpful for us to know? <span class="bold-action">Upload</span> role descriptions, leadership models, or strategic plans to help us align the profile to future needs.</div>', unsafe_allow_html=True)
-    context_docs = st.file_uploader(
-        "Upload PDF or DOCX", type=['pdf', 'docx'], accept_multiple_files=True, key="context"
-    )
+    st.markdown('<div class="section-desc">What would be helpful for us to know? <span class="bold-action">Upload</span> role descriptions, leadership models, or strategic plans to help us align the profile to future needs.</div>', unsafe_allow_html=True)
+    context_docs = st.file_uploader("Upload PDF or DOCX", type=['pdf', 'docx'], accept_multiple_files=True, key="context")
 
     st.markdown("<div style='height: 18px;'></div>", unsafe_allow_html=True)
 
-    # Prompt box with examples
     st.markdown(
         '<div style="color: #888; font-size: 1.05em; margin-top:1.5rem;">'
         'Do you have any specific questions in mind? <br>'
@@ -220,65 +251,70 @@ def main():
     user_question = st.text_area(" ", height=80, key="user_question")
 
     if st.button("Submit"):
-        st.session_state.subject_docs = []
-        st.session_state.context_docs = []
-        st.session_state.question_answer = None
-        st.session_state.profile = None
         all_docs = list(st.session_state.reference_docs)
+        all_metadatas = []  # NEW: to collect all metadata for the report
+
         with st.spinner("Processing documents..."):
-            # Process subject docs
             if subject_docs:
+                st.session_state.subject_docs = []
+                st.session_state.subject_metadatas = []  # NEW
                 for file in subject_docs:
                     with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.name)[1]) as tmp_file:
                         tmp_file.write(file.getvalue())
-                        processed_text = document_processor.process_document(tmp_file.name)
-                        st.session_state.subject_docs.append(processed_text)
+                        text, metadata = document_processor.process_document(tmp_file.name)
+                        st.session_state.subject_docs.append(text)
+                        st.session_state.subject_metadatas.append(metadata)
                         os.unlink(tmp_file.name)
                 all_docs.extend(st.session_state.subject_docs)
-            # Process context docs
+                all_metadatas.extend(st.session_state.subject_metadatas)
+
             if context_docs:
+                st.session_state.context_docs = []
+                st.session_state.context_metadatas = []  # NEW
                 for file in context_docs:
                     with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.name)[1]) as tmp_file:
                         tmp_file.write(file.getvalue())
-                        processed_text = document_processor.process_document(tmp_file.name)
-                        st.session_state.context_docs.append(processed_text)
+                        text, metadata = document_processor.process_document(tmp_file.name)
+                        st.session_state.context_docs.append(text)
+                        st.session_state.context_metadatas.append(metadata)
                         os.unlink(tmp_file.name)
                 all_docs.extend(st.session_state.context_docs)
-        # Store all documents in vector database
-        vector_store.store_documents(all_docs)
-        # Generate profile
-        st.session_state.profile = profile_generator.generate_profile(
-            vector_store.get_relevant_chunks()
-        )
-        # If user provided a question, get an answer and append it
+                all_metadatas.extend(st.session_state.context_metadatas)
+
+        vector_store.store_documents(all_docs)  # all_docs is now a list of strings
+
+        with st.spinner("Generating leadership profile... Please wait."):
+            st.session_state.profile = profile_generator.generate_profile(
+                vector_store.get_relevant_chunks(),
+                all_metadatas  # Pass the metadata list for the document summary
+            )
+
         if user_question.strip():
             st.session_state.question_answer = profile_generator.answer_question(
                 vector_store.get_relevant_chunks(), user_question
             )
 
-    # Display profile if available
     if st.session_state.profile:
         st.markdown('<div class="section-title">Executive Summary</div>', unsafe_allow_html=True)
         st.markdown('<div class="profile-section">', unsafe_allow_html=True)
         st.write(st.session_state.profile)
         st.markdown('</div>', unsafe_allow_html=True)
-        # Display answer to user question if provided
+
         if st.session_state.question_answer:
             st.markdown('<div class="section-title">Special Question Answer</div>', unsafe_allow_html=True)
             st.markdown('<div class="profile-section">', unsafe_allow_html=True)
             st.write(st.session_state.question_answer)
             st.markdown('</div>', unsafe_allow_html=True)
-        # Export to PDF download button
-        pdf_bytes = create_pdf(st.session_state.profile, st.session_state.question_answer)
-        st.download_button(
-            label="Export to PDF",
-            data=pdf_bytes,
-            file_name="leadership_profile.pdf",
-            mime="application/pdf"
-        )
 
-    # Custom footer
+        # pdf_bytes = create_pdf(st.session_state.profile, st.session_state.question_answer)
+        # st.download_button(
+        #     label="Export to PDF",
+        #     data=pdf_bytes,
+        #     file_name="leadership_profile.pdf",
+        #     mime="application/pdf"
+        # )
+
     st.markdown('<div class="footer">KNOWTHEE.AI</div>', unsafe_allow_html=True)
 
 if __name__ == "__main__":
-    main() 
+    main()
